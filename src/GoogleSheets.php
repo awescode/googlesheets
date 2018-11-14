@@ -114,8 +114,10 @@ class GoogleSheets implements GoogleSheetsContract
                 $classes[] = $attrsItem->nodeValue;
             }
 
-            if (in_array($strong, $classes)) {
-                $this->changeTagName($node, "strong");
+            if ($strong != "") {
+                if (in_array($strong, $classes)) {
+                    $this->changeTagName($node, "strong");
+                }
             }
         }
 
@@ -140,8 +142,8 @@ class GoogleSheets implements GoogleSheetsContract
         $htmlFiltered = preg_replace("/<\s*?p\b[^>]*>".$option['blockquote'].":\s*?(.*?)<\/p\b[^>]*>/", "<blockquote><strong>".$option['blockquote'].":</strong> $1</blockquote>", $htmlFiltered);
         $htmlFiltered = preg_replace("/<\s*?p\b[^>]*><\s*?strong\b[^>]*>".$option['blockquote'].":\s*?<\/strong\b[^>]*>(.*?)<\/p\b[^>]*>/", "<blockquote><strong>".$option['blockquote'].":</strong> $1</blockquote>", $htmlFiltered);
 
-        $htmlFiltered = preg_replace('/<p>“(.*?)”<\/p>/', "<blockquote class='tf__quote'>$1</blockquote>", $htmlFiltered);
-        $htmlFiltered = preg_replace('/<p><br>“(.*?)”<\/p>/', "<blockquote class='tf__quote'>$1</blockquote>", $htmlFiltered);
+        $htmlFiltered = preg_replace('/<p>“(.*?)”<\/p>/', "<blockquote class='tf__quote i i-quote'>$1</blockquote>", $htmlFiltered);
+        $htmlFiltered = preg_replace('/<p><br>“(.*?)”<\/p>/', "<blockquote class='tf__quote i i-quote'>$1</blockquote>", $htmlFiltered);
 
         return $htmlFiltered;
     }
