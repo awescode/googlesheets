@@ -61,6 +61,11 @@ class GoogleSheets implements GoogleSheetsContract
         }
     }
 
+    /**
+     * @param $html
+     * @param $option
+     * @return mixed|null|string|string[]
+     */
     private function filterHTML($html, $option)
     {
         $matches = array();
@@ -70,12 +75,36 @@ class GoogleSheets implements GoogleSheetsContract
             $strong = 'c' . $matches[1];
         }
 
+        $html = iconv(mb_detect_encoding($html, mb_detect_order(), true), "UTF-8", $html);
+
         $document = new \DOMDocument('1.0', 'UTF-8');
         $internalErrors = libxml_use_internal_errors(true);
         $document->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
         libxml_use_internal_errors($internalErrors);
 
         $xpath = new \DOMXPath($document);
+
+        // Remove all necessary tags
+        foreach ($xpath->query('//sup') as $element) {
+            // Move all span tag content to its parent node just before it.
+            while ($element->hasChildNodes()) {
+                $child = $element->removeChild($element->firstChild);
+                $element->parentNode->insertBefore($child, $element);
+            }
+            // Remove the span tag.
+            $element->parentNode->removeChild($element);
+        }
+
+        foreach ($xpath->query('//a') as $element) {
+            // Move all span tag content to its parent node just before it.
+            while ($element->hasChildNodes()) {
+                $child = $element->removeChild($element->firstChild);
+                $element->parentNode->insertBefore($child, $element);
+            }
+            // Remove the span tag.
+            $element->parentNode->removeChild($element);
+        }
+
         $nodes = $xpath->query('//*[@class]');  // Find elements with a style attribute
         foreach ($nodes as $key => $node) {              // Iterate over found elements
 
@@ -88,7 +117,6 @@ class GoogleSheets implements GoogleSheetsContract
             if (in_array($strong, $classes)) {
                 $this->changeTagName($node, "strong");
             }
-
         }
 
         $nodes = $xpath->query('//@*');
@@ -104,12 +132,16 @@ class GoogleSheets implements GoogleSheetsContract
         }
 
         if ($htmlFiltered != '') {
-            $htmlFiltered = str_replace(["<body>", "</body>",  "<span>", "</span>", "> <", "\n"], ["", "", "", "", "><", ""], $htmlFiltered);
+            // here is tmp fix
+            $htmlFiltered = str_replace(["<body>", "</body>",  "<span>", "</span>", "> <", "\n"], ["", "", "", "", "><", "\n"], $htmlFiltered);
             $htmlFiltered = str_replace(["<p></p>", ""], "", $htmlFiltered);
         }
 
         $htmlFiltered = preg_replace("/<\s*?p\b[^>]*>".$option['blockquote'].":\s*?(.*?)<\/p\b[^>]*>/", "<blockquote><strong>".$option['blockquote'].":</strong> $1</blockquote>", $htmlFiltered);
         $htmlFiltered = preg_replace("/<\s*?p\b[^>]*><\s*?strong\b[^>]*>".$option['blockquote'].":\s*?<\/strong\b[^>]*>(.*?)<\/p\b[^>]*>/", "<blockquote><strong>".$option['blockquote'].":</strong> $1</blockquote>", $htmlFiltered);
+
+        $htmlFiltered = preg_replace('/<p>“(.*?)”<\/p>/', "<blockquote class='tf__quote'>$1</blockquote>", $htmlFiltered);
+        $htmlFiltered = preg_replace('/<p><br>“(.*?)”<\/p>/', "<blockquote class='tf__quote'>$1</blockquote>", $htmlFiltered);
 
         return $htmlFiltered;
     }
