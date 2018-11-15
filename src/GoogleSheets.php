@@ -136,7 +136,7 @@ class GoogleSheets implements GoogleSheetsContract
         $htmlFiltered = preg_replace("/\[(.+?)\]\((.+?)\)/", '<a href="{{ sku($2) }}">$1</a>', $htmlFiltered);
 
         // Remove empty <p> tag
-        $htmlFiltered = str_replace(["<p></p>", "<p> </p>", "<a></a>"], ["", "", ""], $htmlFiltered);
+        $htmlFiltered = str_replace(["<p></p>", "<p> </p>", "<a></a>", "<body>", "</body>"], ["", "", ""], $htmlFiltered);
 
         return $htmlFiltered;
     }
