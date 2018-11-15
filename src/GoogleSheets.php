@@ -68,13 +68,6 @@ class GoogleSheets implements GoogleSheetsContract
      */
     private function filterHTML($html, $option)
     {
-        $matches = array();
-        preg_match('/\.c(\d){0,2}\{font-weight:700}/', $html, $matches);
-        $strong = '';
-        if(isset($matches[1])) {
-            $strong = 'c' . $matches[1];
-        }
-
         $html = iconv(mb_detect_encoding($html, mb_detect_order(), true), "UTF-8", $html);
 
         $document = new \DOMDocument('1.0', 'UTF-8');
@@ -84,18 +77,20 @@ class GoogleSheets implements GoogleSheetsContract
 
         $xpath = new \DOMXPath($document);
 
-        // Remove all necessary tags
-        foreach ($xpath->query('//sup') as $element) {
-            // Move all span tag content to its parent node just before it.
-            while ($element->hasChildNodes()) {
-                $child = $element->removeChild($element->firstChild);
-                $element->parentNode->insertBefore($child, $element);
-            }
-            // Remove the span tag.
-            $element->parentNode->removeChild($element);
+        // Remove all comments from string
+        $elements = $document->getElementsByTagName('sup');
+        for ($i = $elements->length; --$i >= 0; ) {
+            $node = $elements->item($i);
+            $node->parentNode->removeChild($node);
+        }
+        $elements = $document->getElementsByTagName('div');
+        for ($i = $elements->length; --$i >= 0; ) {
+            $node = $elements->item($i);
+            $node->parentNode->removeChild($node);
         }
 
-        foreach ($xpath->query('//a') as $element) {
+        // Remove all necessary tags
+        foreach ($xpath->query('//span') as $element) {
             // Move all span tag content to its parent node just before it.
             while ($element->hasChildNodes()) {
                 $child = $element->removeChild($element->firstChild);
@@ -114,11 +109,6 @@ class GoogleSheets implements GoogleSheetsContract
                 $classes[] = $attrsItem->nodeValue;
             }
 
-            if ($strong != "") {
-                if (in_array($strong, $classes)) {
-                    $this->changeTagName($node, "strong");
-                }
-            }
         }
 
         $nodes = $xpath->query('//@*');
@@ -133,17 +123,20 @@ class GoogleSheets implements GoogleSheetsContract
             $htmlFiltered = $document->savehtml($body);
         }
 
-        if ($htmlFiltered != '') {
-            // here is tmp fix
-            $htmlFiltered = str_replace(["<body>", "</body>",  "<span>", "</span>", "> <", "\n"], ["", "", "", "", "><", "\n"], $htmlFiltered);
-            $htmlFiltered = str_replace(["<p></p>", ""], "", $htmlFiltered);
-        }
+        // ">>" markdown tipp blockquote
+        $htmlFiltered = preg_replace("/<p>\&gt;\&gt;(.*?)<\/p>/", "<blockquote>$1</blockquote>", $htmlFiltered);
 
-        $htmlFiltered = preg_replace("/<\s*?p\b[^>]*>".$option['blockquote'].":\s*?(.*?)<\/p\b[^>]*>/", "<blockquote><strong>".$option['blockquote'].":</strong> $1</blockquote>", $htmlFiltered);
-        $htmlFiltered = preg_replace("/<\s*?p\b[^>]*><\s*?strong\b[^>]*>".$option['blockquote'].":\s*?<\/strong\b[^>]*>(.*?)<\/p\b[^>]*>/", "<blockquote><strong>".$option['blockquote'].":</strong> $1</blockquote>", $htmlFiltered);
+        // ">" markdown blockquote
+        $htmlFiltered = preg_replace("/<p>\&gt;(.*?)<\/p>/", "<blockquote class='tf__quote i i-quote'>$1</blockquote>", $htmlFiltered);
 
-        $htmlFiltered = preg_replace('/<p>“(.*?)”<\/p>/', "<blockquote class='tf__quote i i-quote'>$1</blockquote>", $htmlFiltered);
-        $htmlFiltered = preg_replace('/<p><br>“(.*?)”<\/p>/', "<blockquote class='tf__quote i i-quote'>$1</blockquote>", $htmlFiltered);
+        // "***" markdown strong
+        $htmlFiltered = preg_replace("/\*\*\*(.+?)\*\*\*/", '<strong>$1</strong>', $htmlFiltered);
+
+        // "[value of link](sku)" - links
+        $htmlFiltered = preg_replace("/\[(.+?)\]\((.+?)\)/", '<a href="{{ sku($2) }}">$1</a>', $htmlFiltered);
+
+        // Remove empty <p> tag
+        $htmlFiltered = str_replace(["<p></p>", "<p> </p>", "<a></a>"], ["", "", ""], $htmlFiltered);
 
         return $htmlFiltered;
     }
